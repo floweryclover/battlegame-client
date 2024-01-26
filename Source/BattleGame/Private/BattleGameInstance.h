@@ -46,13 +46,19 @@ private:
 	int lastReceivedHeaderType;
 
 protected:
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnDisconnectedEvent(const int32 reason);
 
 public:
 	UBattleGameInstance();
 	virtual ~UBattleGameInstance();
+
 	UFUNCTION(BlueprintCallable)
 	bool ConnectToServer(const FString& serverAddress, const int32 serverPort, int32& errorCode);
 
 	UFUNCTION(BlueprintCallable)
 	bool ProcessNetworkTasks();
+
+	UFUNCTION(BlueprintCallable)
+	FText InterpretWsaErrorCode(const int32 wsaErrorCode);
 };

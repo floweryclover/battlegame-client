@@ -1,4 +1,4 @@
-// Copyright floweryclover 2024, All rights reserved.
+﻿// Copyright floweryclover 2024, All rights reserved.
 
 #include "BattleGameInstance.h"
 #include <functional>
@@ -158,6 +158,29 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 	}
 
 	return true;
+}
+
+FText UBattleGameInstance::InterpretWsaErrorCode(const int32 wsaErrorCode)
+{
+	FString reason;
+	switch (wsaErrorCode)
+	{
+	case WSAEWOULDBLOCK:
+		reason = FString("IO 작업이 Would Block 상태입니다.");
+		break;
+	case WSAECONNABORTED:
+	case WSAECONNRESET:
+		reason = FString("서버와의 연결이 끊어졌습니다.");
+		break;
+	case WSAECONNREFUSED:
+		reason = FString("서버에 연결할 수 없습니다.");
+		break;
+	default:
+		reason = FString("알 수 없는 에러입니다.");
+		break;
+	}
+
+	return FText::FromString(reason);
 }
 
 void UBattleGameInstance::CleanupSocket()
