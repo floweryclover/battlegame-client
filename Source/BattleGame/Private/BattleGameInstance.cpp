@@ -1,12 +1,15 @@
 ﻿// Copyright floweryclover 2024, All rights reserved.
 
 #include "BattleGameInstance.h"
+#include "BattleGameNetwork.h"
 #include <functional>
 #include <cstring>
+#include <Winsock2.h>
+#include <WS2tcpip.h>
 
 DEFINE_LOG_CATEGORY(LogBattleGameNetwork);
 
-UBattleGameInstance::UBattleGameInstance() : clientSocket(INVALID_SOCKET), currentSent(0), totalSizeToReceive(MESSAGE_HEADER_SIZE), currentReceived(0), lastReceivedHeaderType(0)
+UBattleGameInstance::UBattleGameInstance() : clientSocket(INVALID_SOCKET), currentSent(0), totalSizeToReceive(MESSAGE_HEADER_SIZE), currentReceived(0), lastReceivedHeaderType(0), pNetworkInstance(NewObject<UBattleGameNetwork>())
 {
 	memset(receiveBuffer, 0, MAX_MESSAGE_SIZE);
 }
@@ -163,7 +166,7 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 	return true;
 }
 
-FText UBattleGameInstance::InterpretWsaErrorCode(const int32 wsaErrorCode)
+FText UBattleGameInstance::InterpretWsaErrorCode(const int32 wsaErrorCode) const
 {
 	FString reason;
 	switch (wsaErrorCode)

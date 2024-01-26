@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include <Winsock2.h>
-#include <WS2tcpip.h>
+#include "BattleGameNetwork.h"
+#include "BattleGameNetworkStructs.h"
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
@@ -11,12 +11,8 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBattleGameNetwork, Log, All);
 
-struct Message
-{
-	int bodySize; // header
-	int messageType; // header
-	char* body; // body
-};
+using UINT_PTR = unsigned long long;
+using SOCKET = UINT_PTR;
 
 /**
  * 
@@ -31,7 +27,7 @@ private:
 	virtual void Shutdown() override;
 
 	void CleanupSocket();
-
+	
 	SOCKET clientSocket;
 	
 	TQueue<Message> sendQueue;
@@ -44,6 +40,8 @@ private:
 	char receiveBuffer[MAX_MESSAGE_SIZE];
 
 	int lastReceivedHeaderType;
+
+	class UBattleGameNetwork* pNetworkInstance;
 
 protected:
 	UFUNCTION(BlueprintImplementableEvent)
@@ -60,5 +58,11 @@ public:
 	bool ProcessNetworkTasks();
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
-	FText InterpretWsaErrorCode(const int32 wsaErrorCode);
+	FText InterpretWsaErrorCode(const int32 wsaErrorCode) const;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	inline UBattleGameNetwork* GetBattleGameNetwork() { return this->pNetworkInstance; }
+
+	inline SOCKET GetSocket() { return this->clientSocket; }
+	inline TQueue<Message>& GetSendQueue() { return this->sendQueue; }
 };
