@@ -67,11 +67,15 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 		SUCCESSFUL
 	};
 
-	auto handleResult = [this](int result)
+	auto handleResult = [this](int result, int& outErrorCode)
 		{
 			if (result == SOCKET_ERROR)
 			{
 				int errorCode = WSAGetLastError();
+				if (outErrorCode)
+				{
+					outErrorCode = errorCode;
+				}
 				if (errorCode == WSAEWOULDBLOCK)
 				{
 					return WOULD_BLOCK;
@@ -103,7 +107,8 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 	if (messageToSend != nullptr)
 	{
 		int result = send(clientSocket, reinterpret_cast<char*>(messageToSend + currentSent), (8+messageToSend->bodySize)-currentSent, 0);
-		switch (handleResult(result))
+		int errorCode;
+		switch (handleResult(result, errorCode))
 		{
 		case Result::SUCCESSFUL:
 			currentSent += result;
@@ -116,6 +121,7 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 			break;
 		case Result::DISCONNECTED:
 			CleanupSocket();
+			OnDisconnectedEvent(static_cast<int32>(errorCode));
 			return false;
 		case Result::WOULD_BLOCK:
 			break;
@@ -123,7 +129,8 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 	}
 
 	int result = recv(clientSocket, (receiveBuffer + currentReceived), (totalSizeToReceive - currentReceived), 0);
-	switch (handleResult(result))
+	int errorCode;
+	switch (handleResult(result, errorCode))
 	{
 	case Result::SUCCESSFUL:
 		currentReceived += result;
@@ -152,6 +159,7 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 		break;
 	case Result::DISCONNECTED:
 		CleanupSocket();
+		OnDisconnectedEvent(static_cast<int32>(errorCode));
 		return false;
 	case Result::WOULD_BLOCK:
 		break;
@@ -166,17 +174,17 @@ FText UBattleGameInstance::InterpretWsaErrorCode(const int32 wsaErrorCode)
 	switch (wsaErrorCode)
 	{
 	case WSAEWOULDBLOCK:
-		reason = FString("IO 작업이 Would Block 상태입니다.");
+		reason = FString(TEXT("IO 작업이 Would Block 상태입니다."));
 		break;
 	case WSAECONNABORTED:
 	case WSAECONNRESET:
-		reason = FString("서버와의 연결이 끊어졌습니다.");
+		reason = FString(TEXT("서버와의 연결이 끊어졌습니다."));
 		break;
 	case WSAECONNREFUSED:
-		reason = FString("서버에 연결할 수 없습니다.");
+		reason = FString(TEXT("서버에 연결할 수 없습니다."));
 		break;
 	default:
-		reason = FString("알 수 없는 에러입니다.");
+		reason = FString(TEXT("알 수 없는 에러입니다."));
 		break;
 	}
 

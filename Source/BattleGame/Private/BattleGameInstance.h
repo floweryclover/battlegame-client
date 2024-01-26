@@ -59,6 +59,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool ProcessNetworkTasks();
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, BlueprintPure)
 	FText InterpretWsaErrorCode(const int32 wsaErrorCode);
 };
