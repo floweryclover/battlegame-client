@@ -146,11 +146,6 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 			else
 			{
 				// deserialize body and handle that here...
-				char* testMessage = new char[totalSizeToReceive];
-				memcpy_s(testMessage, totalSizeToReceive, receiveBuffer, totalSizeToReceive);
-				FString a(testMessage);
-				UE_LOG(LogBattleGameNetwork, Log, TEXT("Received Test Message, Type: %d, Size: %d, Body: %s"), lastReceivedHeaderType, totalSizeToReceive, *a);
-				delete[] testMessage;
 				totalSizeToReceive = 8;
 			}
 			currentReceived = 0;
