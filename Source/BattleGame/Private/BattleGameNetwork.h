@@ -10,7 +10,7 @@
 
 using UINT_PTR = unsigned long long;
 using SOCKET = UINT_PTR;
-
+class UBattleGameInstance;
 /**
  * 
  */
@@ -20,6 +20,7 @@ class UBattleGameNetwork : public UObject
 	GENERATED_BODY()
 
 public:
+	void Init(UBattleGameInstance* pInstance);
 	UBattleGameNetwork();
 	virtual ~UBattleGameNetwork();
 	
@@ -27,6 +28,7 @@ public:
 	void Login(const FString& nickname);
 
 private:
+	UBattleGameInstance* pGameInstance;
 	SOCKET GetSocket();
 	TQueue<Message>& GetSendQueue();
 };

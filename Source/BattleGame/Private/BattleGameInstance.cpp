@@ -9,20 +9,23 @@
 
 DEFINE_LOG_CATEGORY(LogBattleGameNetwork);
 
-UBattleGameInstance::UBattleGameInstance() : clientSocket(INVALID_SOCKET), currentSent(0), totalSizeToReceive(MESSAGE_HEADER_SIZE), currentReceived(0), lastReceivedHeaderType(0), pNetworkInstance(NewObject<UBattleGameNetwork>())
-{
-	memset(receiveBuffer, 0, MAX_MESSAGE_SIZE);
-}
+UBattleGameInstance::UBattleGameInstance() {}
 
-UBattleGameInstance::~UBattleGameInstance()
-{
-}
+UBattleGameInstance::~UBattleGameInstance() {}
 
 void UBattleGameInstance::Init()
 {
 	WSADATA wsaData;
 	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	check(result == 0);
+
+	clientSocket = INVALID_SOCKET;
+	currentSent = 0;
+	totalSizeToReceive = MESSAGE_HEADER_SIZE;
+	currentReceived = 0;
+	memset(receiveBuffer, 0, MAX_MESSAGE_SIZE);
+	pNetworkInstance = NewObject<UBattleGameNetwork>();
+	pNetworkInstance->Init(this);
 }
 
 void UBattleGameInstance::Shutdown()
@@ -106,10 +109,12 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 			}
 		};
 
-	const auto messageToSend = sendQueue.Peek();
+	Message* messageToSend = sendQueue.Peek();
 	if (messageToSend != nullptr)
 	{
-		int result = send(clientSocket, reinterpret_cast<char*>(messageToSend + currentSent), (8+messageToSend->bodySize)-currentSent, 0);
+		char* pDataToSend = (currentSent < 8 ? reinterpret_cast<char*>(messageToSend) : messageToSend->body-8) + currentSent;
+		int lengthToSend = (currentSent < 8 ? 8 : messageToSend->bodySize+8) - currentSent;
+		int result = send(clientSocket, pDataToSend, lengthToSend, 0);
 		int errorCode;
 		switch (handleResult(result, errorCode))
 		{
@@ -118,6 +123,7 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 			check(currentSent <= 8 + messageToSend->bodySize);
 			if (currentSent == 8 + messageToSend->bodySize)
 			{
+				delete[] messageToSend->body;
 				sendQueue.Pop();
 				currentSent = 0;
 			}
