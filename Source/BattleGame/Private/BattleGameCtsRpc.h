@@ -17,12 +17,14 @@ class UBattleGameCtsRpc : public UObject
 	GENERATED_BODY()
 
 public:
+	static constexpr int CTS_REQUEST_JOIN_GAME = 1;
+
 	void Init(TQueue<Message>* _pSendQueue);
 	UBattleGameCtsRpc();
 	virtual ~UBattleGameCtsRpc();
 	
 	UFUNCTION(BlueprintCallable)
-	void Login(const FString& nickname);
+	void RequestJoinGame();
 
 private:
 	TQueue<Message>* pSendQueue;

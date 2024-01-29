@@ -2,12 +2,13 @@
 
 #include "BattleGameInstance.h"
 #include "BattleGameCtsRpc.h"
+#include "BattleGameStcRpc.h"
 #include <functional>
 #include <cstring>
 #include <Winsock2.h>
 #include <WS2tcpip.h>
 
-DEFINE_LOG_CATEGORY(LogBattleGameCtsRpc);
+DEFINE_LOG_CATEGORY(LogBattleGameNetwork);
 
 UBattleGameInstance::UBattleGameInstance() {}
 
@@ -22,10 +23,12 @@ void UBattleGameInstance::Init()
 	clientSocket = INVALID_SOCKET;
 	currentSent = 0;
 	totalSizeToReceive = MESSAGE_HEADER_SIZE;
+	isReceivingHeader = true;
 	currentReceived = 0;
 	memset(receiveBuffer, 0, MAX_MESSAGE_SIZE);
 	pCtsRpcInstance = NewObject<UBattleGameCtsRpc>();
 	pCtsRpcInstance->Init(&this->sendQueue);
+	pStcRpcInstance = NewObject<UBattleGameStcRpc>();
 }
 
 void UBattleGameInstance::Shutdown()
@@ -92,7 +95,7 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 				}
 				else
 				{
-					UE_LOG(LogBattleGameCtsRpc, Error, TEXT("An error occured while sending data: %d"), errorCode);
+					UE_LOG(LogBattleGameNetwork, Error, TEXT("An error occured while sending data: %d"), errorCode);
 					return DISCONNECTED;
 				}
 			}
@@ -112,16 +115,16 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 	Message* messageToSend = sendQueue.Peek();
 	if (messageToSend != nullptr)
 	{
-		char* pDataToSend = (currentSent < 8 ? reinterpret_cast<char*>(messageToSend) : (messageToSend->bodyBuffer.Get())-8) + currentSent;
-		int lengthToSend = (currentSent < 8 ? 8 : messageToSend->headerBodySize+8) - currentSent;
+		char* pDataToSend = (currentSent < MESSAGE_HEADER_SIZE ? reinterpret_cast<char*>(messageToSend) : (messageToSend->bodyBuffer.Get())- MESSAGE_HEADER_SIZE) + currentSent;
+		int lengthToSend = (currentSent < MESSAGE_HEADER_SIZE ? MESSAGE_HEADER_SIZE : messageToSend->headerBodySize+ MESSAGE_HEADER_SIZE) - currentSent;
 		int result = send(clientSocket, pDataToSend, lengthToSend, 0);
 		int errorCode;
 		switch (handleResult(result, errorCode))
 		{
 		case Result::SUCCESSFUL:
 			currentSent += result;
-			check(currentSent <= 8 + messageToSend->headerBodySize);
-			if (currentSent == 8 + messageToSend->headerBodySize)
+			check(currentSent <= MESSAGE_HEADER_SIZE + messageToSend->headerBodySize);
+			if (currentSent == MESSAGE_HEADER_SIZE + messageToSend->headerBodySize)
 			{
 				sendQueue.Pop();
 				currentSent = 0;
@@ -136,6 +139,21 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 		}
 	}
 
+	auto completeMessage = [this]()
+		{
+			Message message;
+			message.headerBodySize = totalSizeToReceive;
+			message.headerMessageType = lastReceivedHeaderType;
+			message.bodyBuffer = TUniquePtr<char>(new char[totalSizeToReceive]);
+			memcpy(message.bodyBuffer.Get(), receiveBuffer, totalSizeToReceive);
+
+			UE_LOG(LogBattleGameNetwork, Log, TEXT("수신 헤더 바디크기: %d, 타입: %d"), message.headerBodySize, message.headerMessageType);
+
+			totalSizeToReceive = MESSAGE_HEADER_SIZE;
+			isReceivingHeader = true;
+
+			pStcRpcInstance->Handle(message);
+		};
 	int result = recv(clientSocket, (receiveBuffer + currentReceived), (totalSizeToReceive - currentReceived), 0);
 	int errorCode;
 	switch (handleResult(result, errorCode))
@@ -145,21 +163,24 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 		check(currentReceived <= totalSizeToReceive);
 		if (currentReceived == totalSizeToReceive)
 		{
-			if (totalSizeToReceive == MESSAGE_HEADER_SIZE)
+			if (isReceivingHeader)
 			{
-				memcpy_s(&this->lastReceivedHeaderType, 4, this->receiveBuffer, 4);
-				memcpy_s(&this->totalSizeToReceive, 4, this->receiveBuffer + 4, 4);
+				memcpy_s(&this->totalSizeToReceive, 4, this->receiveBuffer, 4);
+				memcpy_s(&this->lastReceivedHeaderType, 4, this->receiveBuffer+4, 4);
 				check(totalSizeToReceive <= MAX_MESSAGE_SIZE);
+				
+				if (totalSizeToReceive == 0)
+				{
+					completeMessage();
+				}
+				else
+				{
+					isReceivingHeader = false;
+				}
 			}
 			else
 			{
-				Message message;
-				message.headerBodySize = totalSizeToReceive;
-				message.headerMessageType = lastReceivedHeaderType;
-				message.bodyBuffer = TUniquePtr<char>(new char[totalSizeToReceive]);
-				memcpy(message.bodyBuffer.Get(), receiveBuffer, totalSizeToReceive);
-
-				totalSizeToReceive = 8;
+				completeMessage();
 			}
 			currentReceived = 0;
 			ZeroMemory(this->receiveBuffer, MAX_MESSAGE_SIZE);
@@ -206,6 +227,7 @@ void UBattleGameInstance::CleanupSocket()
 	totalSizeToReceive = MESSAGE_HEADER_SIZE;
 	currentReceived = 0;
 	lastReceivedHeaderType = 0;
+	isReceivingHeader = true;
 	if (clientSocket != INVALID_SOCKET)
 	{
 		shutdown(clientSocket, SD_SEND);
