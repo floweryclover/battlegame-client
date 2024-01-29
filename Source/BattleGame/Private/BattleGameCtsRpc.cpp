@@ -1,23 +1,23 @@
 ﻿// Copyright floweryclover 2024, All rights reserved.
 
 
-#include "BattleGameNetwork.h"
+#include "BattleGameCtsRpc.h"
 #include "BattleGameInstance.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <cstring>
 
-UBattleGameNetwork::UBattleGameNetwork(){}
+UBattleGameCtsRpc::UBattleGameCtsRpc(){}
 
-UBattleGameNetwork::~UBattleGameNetwork(){}
+UBattleGameCtsRpc::~UBattleGameCtsRpc(){}
 
-void UBattleGameNetwork::Init(UBattleGameInstance* pInstance)
+void UBattleGameCtsRpc::Init(UBattleGameInstance* pInstance)
 {
 	check(IsValid(pInstance));
 	pGameInstance = pInstance;
 }
 
-SOCKET UBattleGameNetwork::GetSocket() 
+SOCKET UBattleGameCtsRpc::GetSocket() 
 {
 	check(IsValid(pGameInstance));
 	SOCKET socket = pGameInstance->GetSocket();
@@ -25,13 +25,13 @@ SOCKET UBattleGameNetwork::GetSocket()
 	return socket;
 }
 
-TQueue<Message>& UBattleGameNetwork::GetSendQueue()
+TQueue<Message>& UBattleGameCtsRpc::GetSendQueue()
 {
 	check(IsValid(pGameInstance));
 	return pGameInstance->GetSendQueue();
 }
 
-void UBattleGameNetwork::Login(const FString& nickname)
+void UBattleGameCtsRpc::Login(const FString& nickname)
 {
 	const char* chars = TCHAR_TO_UTF8(*nickname);
 	int charLength = strlen(chars);

@@ -1,13 +1,13 @@
 ﻿// Copyright floweryclover 2024, All rights reserved.
 
 #include "BattleGameInstance.h"
-#include "BattleGameNetwork.h"
+#include "BattleGameCtsRpc.h"
 #include <functional>
 #include <cstring>
 #include <Winsock2.h>
 #include <WS2tcpip.h>
 
-DEFINE_LOG_CATEGORY(LogBattleGameNetwork);
+DEFINE_LOG_CATEGORY(LogBattleGameCtsRpc);
 
 UBattleGameInstance::UBattleGameInstance() {}
 
@@ -24,8 +24,8 @@ void UBattleGameInstance::Init()
 	totalSizeToReceive = MESSAGE_HEADER_SIZE;
 	currentReceived = 0;
 	memset(receiveBuffer, 0, MAX_MESSAGE_SIZE);
-	pNetworkInstance = NewObject<UBattleGameNetwork>();
-	pNetworkInstance->Init(this);
+	pCtsRpcInstance = NewObject<UBattleGameCtsRpc>();
+	pCtsRpcInstance->Init(this);
 }
 
 void UBattleGameInstance::Shutdown()
@@ -92,7 +92,7 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 				}
 				else
 				{
-					UE_LOG(LogBattleGameNetwork, Error, TEXT("An error occured while sending data: %d"), errorCode);
+					UE_LOG(LogBattleGameCtsRpc, Error, TEXT("An error occured while sending data: %d"), errorCode);
 					return DISCONNECTED;
 				}
 			}

@@ -6,7 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
-#include "BattleGameNetwork.generated.h"
+#include "BattleGameCtsRpc.generated.h"
 
 using UINT_PTR = unsigned long long;
 using SOCKET = UINT_PTR;
@@ -15,14 +15,14 @@ class UBattleGameInstance;
  * 
  */
 UCLASS()
-class UBattleGameNetwork : public UObject
+class UBattleGameCtsRpc : public UObject
 {
 	GENERATED_BODY()
 
 public:
 	void Init(UBattleGameInstance* pInstance);
-	UBattleGameNetwork();
-	virtual ~UBattleGameNetwork();
+	UBattleGameCtsRpc();
+	virtual ~UBattleGameCtsRpc();
 	
 	UFUNCTION(BlueprintCallable)
 	void Login(const FString& nickname);

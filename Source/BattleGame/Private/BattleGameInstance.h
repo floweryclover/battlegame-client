@@ -2,14 +2,14 @@
 
 #pragma once
 
-#include "BattleGameNetwork.h"
+#include "BattleGameCtsRpc.h"
 #include "BattleGameNetworkStructs.h"
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "BattleGameInstance.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogBattleGameNetwork, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogBattleGameCtsRpc, Log, All);
 
 using UINT_PTR = unsigned long long;
 using SOCKET = UINT_PTR;
@@ -41,7 +41,7 @@ private:
 
 	int lastReceivedHeaderType;
 
-	class UBattleGameNetwork* pNetworkInstance;
+	class UBattleGameCtsRpc* pCtsRpcInstance;
 
 protected:
 	UFUNCTION(BlueprintImplementableEvent)
@@ -61,7 +61,7 @@ public:
 	FText InterpretWsaErrorCode(const int32 wsaErrorCode) const;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
-	inline UBattleGameNetwork* GetBattleGameNetwork() { return this->pNetworkInstance; }
+	inline UBattleGameCtsRpc* GetBattleGameCtsRpc() { return this->pCtsRpcInstance; }
 
 	inline SOCKET GetSocket() { return this->clientSocket; }
 	inline TQueue<Message>& GetSendQueue() { return this->sendQueue; }
