@@ -25,7 +25,7 @@ void UBattleGameInstance::Init()
 	currentReceived = 0;
 	memset(receiveBuffer, 0, MAX_MESSAGE_SIZE);
 	pCtsRpcInstance = NewObject<UBattleGameCtsRpc>();
-	pCtsRpcInstance->Init(this);
+	pCtsRpcInstance->Init(&this->sendQueue);
 }
 
 void UBattleGameInstance::Shutdown()
@@ -153,7 +153,12 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 			}
 			else
 			{
-				// deserialize body and handle that here...
+				Message message;
+				message.headerBodySize = totalSizeToReceive;
+				message.headerMessageType = lastReceivedHeaderType;
+				message.bodyBuffer = TUniquePtr<char>(new char[totalSizeToReceive]);
+				memcpy(message.bodyBuffer.Get(), receiveBuffer, totalSizeToReceive);
+
 				totalSizeToReceive = 8;
 			}
 			currentReceived = 0;

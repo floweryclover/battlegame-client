@@ -8,9 +8,6 @@
 #include "UObject/NoExportTypes.h"
 #include "BattleGameCtsRpc.generated.h"
 
-using UINT_PTR = unsigned long long;
-using SOCKET = UINT_PTR;
-class UBattleGameInstance;
 /**
  * 
  */
@@ -20,7 +17,7 @@ class UBattleGameCtsRpc : public UObject
 	GENERATED_BODY()
 
 public:
-	void Init(UBattleGameInstance* pInstance);
+	void Init(TQueue<Message>* _pSendQueue);
 	UBattleGameCtsRpc();
 	virtual ~UBattleGameCtsRpc();
 	
@@ -28,7 +25,5 @@ public:
 	void Login(const FString& nickname);
 
 private:
-	UBattleGameInstance* pGameInstance;
-	SOCKET GetSocket();
-	TQueue<Message>& GetSendQueue();
+	TQueue<Message>* pSendQueue;
 };

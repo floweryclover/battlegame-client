@@ -2,33 +2,15 @@
 
 
 #include "BattleGameCtsRpc.h"
-#include "BattleGameInstance.h"
-#include <WinSock2.h>
-#include <WS2tcpip.h>
 #include <cstring>
 
 UBattleGameCtsRpc::UBattleGameCtsRpc(){}
 
 UBattleGameCtsRpc::~UBattleGameCtsRpc(){}
 
-void UBattleGameCtsRpc::Init(UBattleGameInstance* pInstance)
+void UBattleGameCtsRpc::Init(TQueue<Message>* _pSendQueue)
 {
-	check(IsValid(pInstance));
-	pGameInstance = pInstance;
-}
-
-SOCKET UBattleGameCtsRpc::GetSocket() 
-{
-	check(IsValid(pGameInstance));
-	SOCKET socket = pGameInstance->GetSocket();
-	check(socket != INVALID_SOCKET);
-	return socket;
-}
-
-TQueue<Message>& UBattleGameCtsRpc::GetSendQueue()
-{
-	check(IsValid(pGameInstance));
-	return pGameInstance->GetSendQueue();
+	this->pSendQueue = _pSendQueue;
 }
 
 void UBattleGameCtsRpc::Login(const FString& nickname)
@@ -42,5 +24,5 @@ void UBattleGameCtsRpc::Login(const FString& nickname)
 	loginMessage.headerMessageType = 1;
 	loginMessage.headerBodySize = charLength;
 	loginMessage.bodyBuffer = TUniquePtr<char>(body);
-	check(GetSendQueue().Enqueue(std::move(loginMessage)));
+	check(pSendQueue->Enqueue(std::move(loginMessage)));
 }
