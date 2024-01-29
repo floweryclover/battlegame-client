@@ -41,6 +41,6 @@ void UBattleGameNetwork::Login(const FString& nickname)
 	Message loginMessage;
 	loginMessage.headerMessageType = 1;
 	loginMessage.headerBodySize = charLength;
-	loginMessage.bodyBuffer = body;
+	loginMessage.bodyBuffer = TUniquePtr<char>(body);
 	check(GetSendQueue().Enqueue(std::move(loginMessage)));
 }

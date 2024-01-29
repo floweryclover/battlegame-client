@@ -112,7 +112,7 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 	Message* messageToSend = sendQueue.Peek();
 	if (messageToSend != nullptr)
 	{
-		char* pDataToSend = (currentSent < 8 ? reinterpret_cast<char*>(messageToSend) : messageToSend->bodyBuffer-8) + currentSent;
+		char* pDataToSend = (currentSent < 8 ? reinterpret_cast<char*>(messageToSend) : (messageToSend->bodyBuffer.Get())-8) + currentSent;
 		int lengthToSend = (currentSent < 8 ? 8 : messageToSend->headerBodySize+8) - currentSent;
 		int result = send(clientSocket, pDataToSend, lengthToSend, 0);
 		int errorCode;
@@ -123,7 +123,6 @@ bool UBattleGameInstance::ProcessNetworkTasks()
 			check(currentSent <= 8 + messageToSend->headerBodySize);
 			if (currentSent == 8 + messageToSend->headerBodySize)
 			{
-				delete[] messageToSend->bodyBuffer;
 				sendQueue.Pop();
 				currentSent = 0;
 			}

@@ -1,12 +1,15 @@
 // Copyright floweryclover 2024, All rights reserved.
 
 #pragma once
+
+#include "CoreMinimal.h"
+
 /**
  * 
  */
 struct Message
 {
-	int headerBodySize; // header
-	int headerMessageType; // header
-	char* bodyBuffer; // body
+	int headerBodySize;
+	int headerMessageType;
+	TUniquePtr<char> bodyBuffer;
 };
