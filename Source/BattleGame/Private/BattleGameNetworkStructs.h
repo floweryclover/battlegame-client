@@ -6,7 +6,7 @@
  */
 struct Message
 {
-	int bodySize; // header
-	int messageType; // header
-	char* body; // body
+	int headerBodySize; // header
+	int headerMessageType; // header
+	char* bodyBuffer; // body
 };

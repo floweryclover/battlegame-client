@@ -39,8 +39,8 @@ void UBattleGameNetwork::Login(const FString& nickname)
 	memcpy(body, chars, charLength);
 
 	Message loginMessage;
-	loginMessage.messageType = 1;
-	loginMessage.bodySize = charLength;
-	loginMessage.body = body;
+	loginMessage.headerMessageType = 1;
+	loginMessage.headerBodySize = charLength;
+	loginMessage.bodyBuffer = body;
 	check(GetSendQueue().Enqueue(std::move(loginMessage)));
 }
