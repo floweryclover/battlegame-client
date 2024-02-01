@@ -26,9 +26,10 @@ void UBattleGameInstance::Init()
 	isReceivingHeader = true;
 	currentReceived = 0;
 	memset(receiveBuffer, 0, MAX_MESSAGE_SIZE);
-	pCtsRpcInstance = NewObject<UBattleGameCtsRpc>();
-	pCtsRpcInstance->Init(&this->sendQueue);
-	pStcRpcInstance = NewObject<UBattleGameStcRpc>();
+	pCtsRpcInstance = NewObject<UBattleGameCtsRpc>(this);
+	pCtsRpcInstance->Init(this);
+	pStcRpcInstance = NewObject<UBattleGameStcRpc>(this);
+	pStcRpcInstance->Init(this);
 }
 
 void UBattleGameInstance::Shutdown()

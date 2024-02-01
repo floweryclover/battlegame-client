@@ -8,6 +8,7 @@
 #include "UObject/NoExportTypes.h"
 #include "BattleGameCtsRpc.generated.h"
 
+class UBattleGameInstance;
 /**
  * 
  */
@@ -17,15 +18,15 @@ class UBattleGameCtsRpc : public UObject
 	GENERATED_BODY()
 
 public:
-	static constexpr int CTS_REQUEST_JOIN_GAME = 1;
+	static constexpr int CTS_REQUEST_MATCHMAKING = 1;
 
-	void Init(TQueue<Message>* _pSendQueue);
+	void Init(UBattleGameInstance* _battleGameInstance);
 	UBattleGameCtsRpc();
 	virtual ~UBattleGameCtsRpc();
 	
 	UFUNCTION(BlueprintCallable)
-	void RequestJoinGame();
+	void RequestMatchMaking();
 
 private:
-	TQueue<Message>* pSendQueue;
+	UBattleGameInstance* battleGameInstance;
 };

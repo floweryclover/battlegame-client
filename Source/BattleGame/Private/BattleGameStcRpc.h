@@ -3,11 +3,13 @@
 #pragma once
 
 #include "BattleGameNetworkStructs.h"
+#include <functional>
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "BattleGameStcRpc.generated.h"
 
+class UBattleGameInstance;
 /**
  *
  */
@@ -17,10 +19,18 @@ class UBattleGameStcRpc : public UObject
 	GENERATED_BODY()
 
 public:
-	static constexpr int STC_TEST = 1;
+	static constexpr int STC_JOINED_GAME_ROOM = 1;
+	static constexpr int STC_DISCONNECTED_FROM_GAME = 2;
+
 	UBattleGameStcRpc();
 	virtual ~UBattleGameStcRpc();
 
+	void Init(UBattleGameInstance* _battleGameInstance);
+
 	void Handle(const Message& message);
-	void OnTest();
+	
+	void OnJoinedGameRoom();
+	void OnDisconnectedFromGame();
+
+	UBattleGameInstance* battleGameInstance;
 };

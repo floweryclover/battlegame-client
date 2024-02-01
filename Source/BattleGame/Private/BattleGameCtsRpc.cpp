@@ -2,22 +2,23 @@
 
 
 #include "BattleGameCtsRpc.h"
+#include "BattleGameInstance.h"
 #include <cstring>
 
-UBattleGameCtsRpc::UBattleGameCtsRpc(){}
+UBattleGameCtsRpc::UBattleGameCtsRpc() {}
 
 UBattleGameCtsRpc::~UBattleGameCtsRpc(){}
 
-void UBattleGameCtsRpc::Init(TQueue<Message>* _pSendQueue)
+void UBattleGameCtsRpc::Init(UBattleGameInstance* _battleGameInstance)
 {
-	this->pSendQueue = _pSendQueue;
+	battleGameInstance = _battleGameInstance;
 }
 
-void UBattleGameCtsRpc::RequestJoinGame()
+void UBattleGameCtsRpc::RequestMatchMaking()
 {
 	Message message;
 	message.headerBodySize = 0;
-	message.headerMessageType = CTS_REQUEST_JOIN_GAME;
+	message.headerMessageType = CTS_REQUEST_MATCHMAKING;
 	message.bodyBuffer = nullptr;
-	check(pSendQueue->Enqueue(std::move(message)));
+	battleGameInstance->GetSendQueue().Enqueue(std::move(message));
 }
