@@ -2,17 +2,9 @@
 
 
 #include "BattleGameCtsRpc.h"
-#include "BattleGameInstance.h"
+#include "BattleGameNetworkManager.h"
+#include "BattleGameNetworkEnums.h"
 #include <cstring>
-
-UBattleGameCtsRpc::UBattleGameCtsRpc() {}
-
-UBattleGameCtsRpc::~UBattleGameCtsRpc(){}
-
-void UBattleGameCtsRpc::Init(UBattleGameInstance* _battleGameInstance)
-{
-	battleGameInstance = _battleGameInstance;
-}
 
 void UBattleGameCtsRpc::RequestMatchMaking()
 {
@@ -20,5 +12,10 @@ void UBattleGameCtsRpc::RequestMatchMaking()
 	message.headerBodySize = 0;
 	message.headerMessageType = CTS_REQUEST_MATCHMAKING;
 	message.bodyBuffer = nullptr;
-	battleGameInstance->GetSendQueue().Enqueue(std::move(message));
+	BattleGameNetworkManager::GetInstance().RequestSendMessage(EBattleGameSendReliability::RELIABLE, std::move(message));
+}
+
+void UBattleGameCtsRpc::SendSomethingUnreliable()
+{
+	
 }

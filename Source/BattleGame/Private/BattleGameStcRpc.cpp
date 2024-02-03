@@ -2,20 +2,8 @@
 
 
 #include "BattleGameStcRpc.h"
-#include "BattleGameInstance.h"
-
-UBattleGameStcRpc::UBattleGameStcRpc()
-{
-}
-
-UBattleGameStcRpc::~UBattleGameStcRpc()
-{
-}
-
-void UBattleGameStcRpc::Init(UBattleGameInstance* _battleGameInstance)
-{
-	this->battleGameInstance = _battleGameInstance;
-}
+#include "BattleGameNetworkManager.h"
+#include "GameFramework/GameModeBase.h"
 
 void UBattleGameStcRpc::Handle(const Message& message)
 {
@@ -32,10 +20,16 @@ void UBattleGameStcRpc::Handle(const Message& message)
 
 void UBattleGameStcRpc::OnJoinedGameRoom()
 {
-	battleGameInstance->GetWorld()->ServerTravel("/Game/BattleLevel");
+	BattleGameNetworkManager::GetInstance()
+		.GetLastGameModeContext()
+		->GetWorld()
+		->ServerTravel("/Game/BattleLevel");
 }
 
 void UBattleGameStcRpc::OnDisconnectedFromGame()
 {
-	battleGameInstance->GetWorld()->ServerTravel("/Game/MainMenuLevel");
+	BattleGameNetworkManager::GetInstance()
+		.GetLastGameModeContext()
+		->GetWorld()
+		->ServerTravel("/Game/MainMenuLevel");
 }

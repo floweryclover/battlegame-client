@@ -20,13 +20,12 @@ class UBattleGameCtsRpc : public UObject
 public:
 	static constexpr int CTS_REQUEST_MATCHMAKING = 1;
 
-	void Init(UBattleGameInstance* _battleGameInstance);
-	UBattleGameCtsRpc();
-	virtual ~UBattleGameCtsRpc();
+	UBattleGameCtsRpc() = default;
+	virtual ~UBattleGameCtsRpc() = default;
 	
 	UFUNCTION(BlueprintCallable)
 	void RequestMatchMaking();
 
-private:
-	UBattleGameInstance* battleGameInstance;
+	UFUNCTION(BlueprintCallable)
+	void SendSomethingUnreliable();
 };
