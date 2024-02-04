@@ -10,7 +10,14 @@ Message::Message(int headerBodySize, int headerMessageType, const char* pBodyOnl
 	: mHeaderBodySize(headerBodySize),
 	mHeaderMessageType(headerMessageType)
 {
-	char* pBodyBuffer = new char[headerBodySize];
-	memcpy(pBodyBuffer, pBodyOnlySource, headerBodySize);
-	mpBodyBuffer = TUniquePtr<char>(pBodyBuffer);
+	if (pBodyOnlySource == nullptr)
+	{
+		mpBodyBuffer = nullptr;
+	}
+	else
+	{
+		char* pBodyBuffer = new char[headerBodySize];
+		memcpy(pBodyBuffer, pBodyOnlySource, headerBodySize);
+		mpBodyBuffer = TUniquePtr<char>(pBodyBuffer);
+	}
 }
