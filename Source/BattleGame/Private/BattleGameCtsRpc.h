@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "BattleGameNetworkStructs.h"
+#include "BattleGameNetworkMessage.h"
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
@@ -19,6 +19,8 @@ class UBattleGameCtsRpc : public UObject
 
 public:
 	static constexpr int CTS_REQUEST_MATCHMAKING = 1;
+	static constexpr int CTS_MOVE_CHARACTER = 2;
+	static constexpr int CTS_ACK_UDP_TOKEN = 3;
 
 	UBattleGameCtsRpc() = default;
 	virtual ~UBattleGameCtsRpc() = default;
@@ -27,5 +29,7 @@ public:
 	void RequestMatchMaking();
 
 	UFUNCTION(BlueprintCallable)
-	void SendSomethingUnreliable();
+	void MoveCharacter(const FVector& position);
+
+	void AckUdpToken(unsigned long long token);
 };

@@ -13,4 +13,8 @@ UCLASS()
 class UBattleGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnDisconnected(int32 reason);
 };

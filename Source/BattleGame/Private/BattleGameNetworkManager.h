@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BattleGameNetworkStructs.h"
+#include "BattleGameNetworkMessage.h"
 #include "BattleGameNetworkEnums.h"
 
 using UINT_PTR = unsigned long long;

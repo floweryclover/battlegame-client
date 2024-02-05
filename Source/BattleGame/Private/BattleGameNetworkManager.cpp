@@ -4,6 +4,7 @@
 #include "BattleGameNetworkManager.h"
 #include "BattleGameCtsRpc.h"
 #include "BattleGameStcRpc.h"
+#include "BattleGameInstance.h"
 #include "LogBattleGameNetwork.h"
 #include "Gameframework/GameModeBase.h"
 #include <functional>
@@ -102,6 +103,7 @@ void BattleGameNetworkManager::CleanupSocket()
 		shutdown(mTcpSocket, SD_SEND);
 		closesocket(mTcpSocket);
 		mTcpSocket = INVALID_SOCKET;
+		shutdown(mUdpSocket, SD_SEND);
 		closesocket(mUdpSocket);
 		mUdpSocket = INVALID_SOCKET;
 	}
@@ -109,43 +111,40 @@ void BattleGameNetworkManager::CleanupSocket()
 
 BattleGameNetworkManager::IoResult BattleGameNetworkManager::HandleResult(int result, int& outErrorCode)
 {
-		if (result == SOCKET_ERROR)
+	outErrorCode = 0;
+	if (result == SOCKET_ERROR)
+	{
+		outErrorCode = WSAGetLastError();
+		if (outErrorCode == WSAEWOULDBLOCK)
 		{
-			int errorCode = WSAGetLastError();
-			if (outErrorCode)
-			{
-				outErrorCode = errorCode;
-			}
-			if (errorCode == WSAEWOULDBLOCK)
-			{
-				return WOULD_BLOCK;
-			}
-			else if (errorCode == WSAECONNRESET || errorCode == WSAECONNABORTED)
-			{
-				return DISCONNECTED;
-			}
-			else
-			{
-				UE_LOG(LogBattleGameNetwork, Error, TEXT("TCP 메시지를 보내던 도중 에러가 발생하였습니다: %d"), errorCode);
-				return DISCONNECTED;
-			}
+			return WOULD_BLOCK;
+		}
+		else if (outErrorCode == WSAECONNRESET || outErrorCode == WSAECONNABORTED)
+		{
+			return DISCONNECTED;
 		}
 		else
 		{
-			if (result == 0)
-			{
-				return DISCONNECTED;
-			}
-			else
-			{
-				return SUCCESSFUL;
-			}
+			UE_LOG(LogBattleGameNetwork, Error, TEXT("TCP 메시지를 보내던 도중 에러가 발생하였습니다: %d"), outErrorCode);
+			return DISCONNECTED;
 		}
+	}
+	else
+	{
+		if (result == 0)
+		{
+			return DISCONNECTED;
+		}
+		else
+		{
+			return SUCCESSFUL;
+		}
+	}
 }
 
 void BattleGameNetworkManager::OnDisconnected(int32 reason)
 {
-	mpLastGameModeContext->GetWorld()->ServerTravel("/Game/PreConnectLevel");
+	Cast<UBattleGameInstance>(mpLastGameModeContext->GetGameInstance())->OnDisconnected(reason);
 }
 
 void BattleGameNetworkManager::RequestSendMessage(EBattleGameSendReliability reliability, Message&& message)
@@ -170,16 +169,16 @@ void BattleGameNetworkManager::SendTcp()
 	Message* messageToSend = mTcpSendQueue.Peek();
 	if (messageToSend != nullptr)
 	{
-		char* pDataToSend = (mCurrentSent < MESSAGE_HEADER_SIZE ? reinterpret_cast<char*>(messageToSend) : (messageToSend->bodyBuffer.Get()) - MESSAGE_HEADER_SIZE) + mCurrentSent;
-		int lengthToSend = (mCurrentSent < MESSAGE_HEADER_SIZE ? MESSAGE_HEADER_SIZE : messageToSend->headerBodySize + MESSAGE_HEADER_SIZE) - mCurrentSent;
+		char* pDataToSend = (mCurrentSent < MESSAGE_HEADER_SIZE ? reinterpret_cast<char*>(messageToSend) : (messageToSend->mpBodyBuffer.Get()) - MESSAGE_HEADER_SIZE) + mCurrentSent;
+		int lengthToSend = (mCurrentSent < MESSAGE_HEADER_SIZE ? MESSAGE_HEADER_SIZE : messageToSend->mHeaderBodySize + MESSAGE_HEADER_SIZE) - mCurrentSent;
 		int result = send(mTcpSocket, pDataToSend, lengthToSend, 0);
 		int errorCode;
 		switch (HandleResult(result, errorCode))
 		{
 		case SUCCESSFUL:
 			mCurrentSent += result;
-			check(mCurrentSent <= MESSAGE_HEADER_SIZE + messageToSend->headerBodySize);
-			if (mCurrentSent == MESSAGE_HEADER_SIZE + messageToSend->headerBodySize)
+			check(mCurrentSent <= MESSAGE_HEADER_SIZE + messageToSend->mHeaderBodySize);
+			if (mCurrentSent == MESSAGE_HEADER_SIZE + messageToSend->mHeaderBodySize)
 			{
 				mTcpSendQueue.Pop();
 				mCurrentSent = 0;
@@ -204,10 +203,10 @@ void BattleGameNetworkManager::ReceiveTcp()
 	auto completeMessage = [this]()
 		{
 			Message message;
-			message.headerBodySize = mTotalSizeToReceive;
-			message.headerMessageType = mLastReceivedHeaderType;
-			message.bodyBuffer = TUniquePtr<char>(new char[mTotalSizeToReceive]);
-			memcpy(message.bodyBuffer.Get(), mReceiveBuffer, mTotalSizeToReceive);
+			message.mHeaderBodySize = mTotalSizeToReceive;
+			message.mHeaderMessageType = mLastReceivedHeaderType;
+			message.mpBodyBuffer = TUniquePtr<char>(new char[mTotalSizeToReceive]);
+			memcpy(message.mpBodyBuffer.Get(), mReceiveBuffer, mTotalSizeToReceive);
 
 			mTotalSizeToReceive = MESSAGE_HEADER_SIZE;
 			mIsReceivingHeader = true;
@@ -263,10 +262,10 @@ void BattleGameNetworkManager::SendUdp(Message&& message)
 	}
 
 	char serializedMessage[MAX_MESSAGE_SIZE];
-	int serializedMessageLength = 4 + 4 + message.headerBodySize;
-	memcpy(serializedMessage, &message.headerBodySize, 4);
-	memcpy(serializedMessage + 4, &message.headerMessageType, 4);
-	memcpy(serializedMessage + 8, message.bodyBuffer.Get(), message.headerBodySize);
+	int serializedMessageLength = 4 + 4 + message.mHeaderBodySize;
+	memcpy(serializedMessage, &message.mHeaderBodySize, 4);
+	memcpy(serializedMessage + 4, &message.mHeaderMessageType, 4);
+	memcpy(serializedMessage + 8, message.mpBodyBuffer.Get(), message.mHeaderBodySize);
 
 	int result = sendto(mUdpSocket, serializedMessage, serializedMessageLength, 0, reinterpret_cast<struct sockaddr*>(mServerAddrIn), mServerAddrLen);
 	if (result == SOCKET_ERROR)
@@ -300,11 +299,11 @@ void BattleGameNetworkManager::ReceiveUdp()
 	}
 
 	Message message;
-	memcpy(&message.headerBodySize, serializedMessage, 4);
-	memcpy(&message.headerMessageType, serializedMessage+4, 4);
-	char* body = new char[message.headerBodySize];
-	memcpy(body, serializedMessage + 8, message.headerBodySize);
-	message.bodyBuffer = TUniquePtr<char>(body);
+	memcpy(&message.mHeaderBodySize, serializedMessage, 4);
+	memcpy(&message.mHeaderMessageType, serializedMessage+4, 4);
+	char* body = new char[message.mHeaderBodySize];
+	memcpy(body, serializedMessage + 8, message.mHeaderBodySize);
+	message.mpBodyBuffer = TUniquePtr<char>(body);
 	
 	mpStcRpcInstance->Handle(message);
 }
