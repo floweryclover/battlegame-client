@@ -21,6 +21,7 @@ public:
 	static constexpr int CTS_REQUEST_MATCHMAKING = 1;
 	static constexpr int CTS_MOVE_CHARACTER = 2;
 	static constexpr int CTS_ACK_UDP_TOKEN = 3;
+	static constexpr int CTS_NOTIFY_BATTLEGAME_PREPARED = 4;
 
 	UBattleGameCtsRpc() = default;
 	virtual ~UBattleGameCtsRpc() = default;
@@ -32,4 +33,7 @@ public:
 	void MoveCharacter(const FVector& position);
 
 	void AckUdpToken(unsigned long long token);
+
+	UFUNCTION(BlueprintCallable)
+	void NotifyBattleGamePrepared();
 };

@@ -5,6 +5,7 @@
 #include "LogBattleGameNetwork.h"
 #include "BattleGameNetworkManager.h"
 #include "BattleGameNetworkEnums.h"
+#include "BattleGameMode.h"
 #include <cstring>
 
 void UBattleGameCtsRpc::RequestMatchMaking()
@@ -31,4 +32,14 @@ void UBattleGameCtsRpc::AckUdpToken(unsigned long long token)
 	Message message(8, CTS_ACK_UDP_TOKEN, reinterpret_cast<char*>(&token));
 	BattleGameNetworkManager::GetInstance()
 		.RequestSendMessage(EBattleGameSendReliability::UNRELIABLE, std::move(message));
+}
+
+void UBattleGameCtsRpc::NotifyBattleGamePrepared()
+{
+	auto pGameMode = Cast<ABattleGameMode>(BattleGameNetworkManager::GetInstance().GetLastGameModeContext());
+	check(pGameMode != nullptr);
+
+	Message message(0, CTS_NOTIFY_BATTLEGAME_PREPARED, nullptr);
+	BattleGameNetworkManager::GetInstance()
+		.RequestSendMessage(EBattleGameSendReliability::RELIABLE, std::move(message));
 }
