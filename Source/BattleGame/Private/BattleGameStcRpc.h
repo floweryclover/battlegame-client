@@ -25,6 +25,7 @@ public:
 	static constexpr int STC_SPAWN_ENTITY = 4;
 	static constexpr int STC_DESPAWN_ENTITY = 5;
 	static constexpr int STC_POSSESS_ENTITY = 6;
+	static constexpr int STC_MOVE_ENTITY = 7;
 
 	UBattleGameStcRpc() = default;
 	virtual ~UBattleGameStcRpc() = default;
@@ -34,7 +35,8 @@ public:
 	void OnJoinedGameRoom();
 	void OnDisconnectedFromGame();
 	void OnAssignUdpToken(unsigned long long token);
-	void OnSpawnEntity();
-	void OnDespawnEntity();
-	void OnPossessEntity();
+	void OnSpawnEntity(int32 entityId, const FVector& location, double direction);
+	void OnDespawnEntity(int32 entityId);
+	void OnPossessEntity(int32 entityId);
+	void OnMoveEntity(int32 entityId, const FVector& location, double direction);
 };

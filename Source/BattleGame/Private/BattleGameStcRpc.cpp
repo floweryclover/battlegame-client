@@ -1,4 +1,4 @@
-// Copyright floweryclover 2024, All rights reserved.
+﻿// Copyright floweryclover 2024, All rights reserved.
 
 
 #include "BattleGameStcRpc.h"
@@ -6,6 +6,7 @@
 #include "BattleGameNetworkManager.h"
 #include "BattleGameNetworkMessage.h"
 #include "BattleGameMode.h"
+#include "LogBattleGameNetwork.h"
 #include "GameFramework/GameModeBase.h"
 
 void UBattleGameStcRpc::Handle(const Message& message)
@@ -24,13 +25,45 @@ void UBattleGameStcRpc::Handle(const Message& message)
 		OnAssignUdpToken(token);
 		break;
 	case STC_SPAWN_ENTITY:
-		OnSpawnEntity();
+	{
+		int32 entityId;
+		FVector location;
+		double direction;
+		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
+		memcpy(&location.X, message.mpBodyBuffer.Get() + 4, 8);
+		memcpy(&location.Y, message.mpBodyBuffer.Get() + 12, 8);
+		memcpy(&location.Z, message.mpBodyBuffer.Get() + 20, 8);
+		memcpy(&direction, message.mpBodyBuffer.Get() + 28, 8);
+		OnSpawnEntity(entityId, location, direction);
 		break;
+	}
 	case STC_DESPAWN_ENTITY:
-		OnDespawnEntity();
+	{
+		int32 entityId;
+		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
+		OnDespawnEntity(entityId);
 		break;
+	}
 	case STC_POSSESS_ENTITY:
-		OnPossessEntity();
+	{
+		int32 entityId;
+		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
+		OnPossessEntity(entityId);
+		break;
+	}
+	case STC_MOVE_ENTITY:
+	{
+		int32 entityId;
+		FVector location;
+		double direction;
+		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
+		memcpy(&location.X, message.mpBodyBuffer.Get() + 4, 8);
+		memcpy(&location.Y, message.mpBodyBuffer.Get() + 12, 8);
+		memcpy(&location.Z, message.mpBodyBuffer.Get() + 20, 8);
+		memcpy(&direction, message.mpBodyBuffer.Get() + 28, 8);
+		OnMoveEntity(entityId, location, direction);
+		break;
+	}
 	}
 }
 
@@ -57,35 +90,50 @@ void UBattleGameStcRpc::OnAssignUdpToken(unsigned long long token)
 		->AckUdpToken(token);
 }
 
-void UBattleGameStcRpc::OnSpawnEntity()
+void UBattleGameStcRpc::OnSpawnEntity(int32 entityId, const FVector& location, double direction)
 {
 	auto pBattleGameMode = Cast<ABattleGameMode>(BattleGameNetworkManager::GetInstance().GetLastGameModeContext());
 	if (pBattleGameMode == nullptr)
 	{
+		UE_LOG(LogBattleGameNetwork, Error, TEXT("BattleGameMode가 준비되지 않았습니다."));
 		return;
 	}
 
-	pBattleGameMode->OnSpawnEntity();
+	pBattleGameMode->OnSpawnEntity(entityId, location, direction);
 }
 
-void UBattleGameStcRpc::OnDespawnEntity()
+void UBattleGameStcRpc::OnDespawnEntity(int32 entityId)
 {
 	auto pBattleGameMode = Cast<ABattleGameMode>(BattleGameNetworkManager::GetInstance().GetLastGameModeContext());
 	if (pBattleGameMode == nullptr)
 	{
+		UE_LOG(LogBattleGameNetwork, Error, TEXT("BattleGameMode가 준비되지 않았습니다."));
 		return;
 	}
 
-	pBattleGameMode->OnDespawnEntity();
+	pBattleGameMode->OnDespawnEntity(entityId);
 }
 
-void UBattleGameStcRpc::OnPossessEntity()
+void UBattleGameStcRpc::OnPossessEntity(int32 entityId)
 {
 	auto pBattleGameMode = Cast<ABattleGameMode>(BattleGameNetworkManager::GetInstance().GetLastGameModeContext());
 	if (pBattleGameMode == nullptr)
 	{
+		UE_LOG(LogBattleGameNetwork, Error, TEXT("BattleGameMode가 준비되지 않았습니다."));
 		return;
 	}
 
-	pBattleGameMode->OnPossessEntity();
+	pBattleGameMode->OnPossessEntity(entityId);
+}
+
+void UBattleGameStcRpc::OnMoveEntity(int32 entityId, const FVector& location, double direction)
+{
+	auto pBattleGameMode = Cast<ABattleGameMode>(BattleGameNetworkManager::GetInstance().GetLastGameModeContext());
+	if (pBattleGameMode == nullptr)
+	{
+		UE_LOG(LogBattleGameNetwork, Error, TEXT("BattleGameMode가 준비되지 않았습니다."));
+		return;
+	}
+
+	pBattleGameMode->OnMoveEntity(entityId, location, direction);
 }

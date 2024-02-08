@@ -16,13 +16,16 @@ class ABattleGameMode : public AGameModeBase
 
 public:
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnSpawnEntity();
+	void OnSpawnEntity(int32 entityId, const FVector& location, double direction);
 
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnDespawnEntity();
+	void OnDespawnEntity(int32 entityId);
 
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnPossessEntity();
+	void OnPossessEntity(int32 entityId);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnMoveEntity(int32 entityId, const FVector& location, double direction);
 
 protected:
 	UPROPERTY(BlueprintReadWrite)
