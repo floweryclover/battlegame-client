@@ -44,7 +44,9 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnSendGameData(const FString& myNickname, const FString& opponentNickname);
-	
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSendGameResult(bool isGoodGame, bool isWinner, int32 myScore, int32 opponentScore);
 protected:
 	UPROPERTY(BlueprintReadWrite)
 	TMap<int32, APawn*> mEntities;

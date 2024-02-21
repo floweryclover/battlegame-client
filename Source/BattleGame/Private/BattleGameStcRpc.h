@@ -39,6 +39,7 @@ public:
 	static constexpr int STC_ASSIGN_ENTITY_NICKNAME = 13;
 	static constexpr int STC_GET_MY_NICKNAME = 14;
 	static constexpr int STC_SEND_GAME_DATA = 15;
+	static constexpr int STC_SEND_GAME_RESULT = 16;
 
 	UBattleGameStcRpc() = default;
 	virtual ~UBattleGameStcRpc() = default;
@@ -59,4 +60,5 @@ public:
 	void OnAssignEntityNickname(int32 entityId, const FText& nickname);
 	void OnGetMyNickname(const FText& nickname);
 	void OnSendGameData(const FString& myNickname, const FString& opponentNickname);
+	void OnSendGameResult(bool isGoodGame, bool isWinner, int32 myScore, int32 opponentScore);
 };

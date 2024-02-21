@@ -138,6 +138,17 @@ void UBattleGameStcRpc::Handle(const Message& message)
 		OnSendGameData(FString(UTF8_TO_TCHAR(myNickname)), FString(UTF8_TO_TCHAR(opponentNickname)));
 		break;
 	}
+	case STC_SEND_GAME_RESULT:
+	{
+		bool isGoodGame, isWinner;
+		int32 myScore, opponentScore;
+		memcpy(&isGoodGame, message.mpBodyBuffer.Get(), 1);
+		memcpy(&isWinner, message.mpBodyBuffer.Get()+1, 1);
+		memcpy(&myScore, message.mpBodyBuffer.Get()+2, 4);
+		memcpy(&opponentScore, message.mpBodyBuffer.Get()+6, 4);
+		OnSendGameResult(isGoodGame, isWinner, myScore, opponentScore);
+		break;
+	}
 	default:
 		UE_LOG(LogBattleGameNetwork, Error, TEXT("알 수 없는 메시지 수신: %d"), message.mHeaderMessageType);	}
 }
@@ -290,4 +301,16 @@ void UBattleGameStcRpc::OnSendGameData(const FString& myNickname, const FString&
 	}
 
 	pBattleGameMode->OnSendGameData(myNickname, opponentNickname);
+}
+
+void UBattleGameStcRpc::OnSendGameResult(bool isGoodGame, bool isWinner, int32 myScore, int32 opponentScore)
+{
+	auto pBattleGameMode = Cast<ABattleGameMode>(BattleGameNetworkManager::GetInstance().GetGameModeContext());
+	if (!IsValid(pBattleGameMode))
+	{
+		UE_LOG(LogBattleGameNetwork, Error, TEXT("BattleGameMode가 준비되지 않았습니다."));
+		return;
+	}
+
+	pBattleGameMode->OnSendGameResult(isGoodGame, isWinner, myScore, opponentScore);
 }
