@@ -19,17 +19,14 @@ class UBattleGameBpFunctionLibrary : public UBlueprintFunctionLibrary
 	
 public:
 	UFUNCTION(BlueprintCallable)
-	static void InitializeBattleGameNetworkManager(const FString& serverAddress, int32 serverPort);
-
-	UFUNCTION(BlueprintCallable)
-	static bool Connect(int32& errorCode);
-
-	UFUNCTION(BlueprintCallable)
-	static void ManualTick(AGameModeBase* gameModeContext);
+	static bool Connect(const FString& serverAddress, int32 serverPort, int32& errorCode);
 
 	UFUNCTION(BlueprintCallable, BlueprintPure)
 	static FText InterpretWsaErrorCode(int32 wsaErrorCode);
 
+	UFUNCTION(BlueprintCallable)
+	static void SetGameModeContext(AGameModeBase* context);
+
 	UFUNCTION(BlueprintCallable, BlueprintPure)
-	static UBattleGameCtsRpc* GetCtsRpcInstance();
+	static int32 GetStringSizeInBytes(const FString& string);
 };

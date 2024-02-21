@@ -10,31 +10,17 @@ using UINT_PTR = unsigned long long;
 using SOCKET = UINT_PTR;
 
 class UBattleGameCtsRpc;
+class UBattleGameStcRpc;
 class AGameModeBase;
 
-/**
- * 
- */
-class BattleGameNetworkManager
+class FNetworkRunnable : public FRunnable
 {
 public:
-	static void Initialize(const FString& serverAddress, int32 serverPort);
-	static inline BattleGameNetworkManager& GetInstance() { check(spSingleton != nullptr); return *spSingleton; }
-	explicit BattleGameNetworkManager(const FString& serverAddress, int32 serverPort) noexcept;
-	~BattleGameNetworkManager();
+	FNetworkRunnable(SOCKET tcpSocket, SOCKET udpSocket, FString serverAddress, int32 serverPort);
+	virtual ~FNetworkRunnable();
 
-	UFUNCTION(BlueprintCallable)
-	bool ConnectToServer(int32& errorCode);
+	void EnqueueMessage(EBattleGameSendReliability reliability, Message&& message);
 
-	UFUNCTION(BlueprintCallable)
-	void ManualTick(AGameModeBase* gameModeContext);
-
-	UFUNCTION(BlueprintCallable, BlueprintPure)
-	inline UBattleGameCtsRpc* GetBattleGameCtsRpc() { return this->mpCtsRpcInstance; }
-
-	void RequestSendMessage(EBattleGameSendReliability reliability, Message&& message);
-
-	AGameModeBase* GetLastGameModeContext();
 private:
 	enum IoResult
 	{
@@ -45,24 +31,21 @@ private:
 
 	static constexpr int MAX_MESSAGE_SIZE = 1024;
 	static constexpr int MESSAGE_HEADER_SIZE = 8;
-	static TUniquePtr<BattleGameNetworkManager> spSingleton;
 
-	void CleanupSocket();
-	void SendTcp();
-	void ReceiveTcp();
-	void SendUdp(Message&& message);
-	void ReceiveUdp();
-	IoResult HandleResult(int result, int& outErrorCode);
+	virtual bool Init() override; // 메인 스레드에서 호출
+	virtual uint32 Run() override; // 새 스레드에서 호출
+	virtual void Exit() override; // 새 스레드에서 호출
+	virtual void Stop() override; // 메인 스레드에서 호출
 
-	void OnDisconnected(int32 reason);
+	bool mStopping;
+	FRunnableThread* mThread;
 
-	const FString mServerAddress;
-	const int32 mServerPort;
-	struct sockaddr_in* mServerAddrIn;
-	int mServerAddrLen;
+	TUniquePtr<struct sockaddr_in> mpServerAddrIn;
+
 	SOCKET mTcpSocket;
 	SOCKET mUdpSocket;
-	TQueue<Message> mTcpSendQueue;
+	TQueue<Message, EQueueMode::Mpsc> mTcpSendQueue;
+	TQueue<Message, EQueueMode::Mpsc> mUdpSendQueue;
 	int mCurrentSent;
 	int mTotalSizeToReceive;
 	int mCurrentReceived;
@@ -70,9 +53,37 @@ private:
 	bool mIsReceivingHeader;
 	int mLastReceivedHeaderType;
 
-	AGameModeBase* mpLastGameModeContext;
+	void SendTcp();
+	void ReceiveTcp();
+	void SendUdp();
+	void ReceiveUdp();
+	IoResult HandleResult(int result, int& outErrorCode);
+};
 
-	class UBattleGameCtsRpc* mpCtsRpcInstance;
-	class UBattleGameStcRpc* mpStcRpcInstance;
+/**
+ * 
+ */
+class BattleGameNetworkManager
+{
+public:
+	static BattleGameNetworkManager& GetInstance();
+	explicit BattleGameNetworkManager() noexcept;
+	~BattleGameNetworkManager();
 
+	bool Connect(const FString& serverAddress, int32 serverPort, int32& errorCode);
+	AGameModeBase* GetGameModeContext();
+	inline void SetGameModeContext(AGameModeBase* pGameModeContext) { mpGameModeContext = pGameModeContext;  };
+	void OnDisconnected(int32 reason);
+
+	inline UBattleGameStcRpc* GetBattleGameStcRpc() { return this->mpStcRpcInstance; }
+
+	void EnqueueMessage(EBattleGameSendReliability reliability, Message&& message);
+
+private:
+	static TUniquePtr<BattleGameNetworkManager> spSingleton;
+
+	TUniquePtr<FNetworkRunnable> mpNetworkRunnable;
+	AGameModeBase* mpGameModeContext;
+
+	UBattleGameStcRpc* mpStcRpcInstance;
 };

@@ -12,104 +12,74 @@
 #include <Winsock2.h>
 #include <WS2tcpip.h>
 
-TUniquePtr<BattleGameNetworkManager> BattleGameNetworkManager::spSingleton = nullptr;
+// FNetworkRunnable
 
-void BattleGameNetworkManager::Initialize(const FString& serverAddress, int32 serverPort)
-{
-	check(spSingleton == nullptr);
-	spSingleton = MakeUnique<BattleGameNetworkManager>(serverAddress, serverPort);
-}
-
-BattleGameNetworkManager::BattleGameNetworkManager(const FString& serverAddress, int32 serverPort) noexcept
-	: mServerAddress(serverAddress),
-	mServerPort(serverPort),
-	mTcpSocket(INVALID_SOCKET),
-	mUdpSocket(INVALID_SOCKET),
+FNetworkRunnable::FNetworkRunnable(SOCKET tcpSocket, SOCKET udpSocket, FString serverAddress, int32 serverPort)
+	: mStopping(false),
+	mTcpSocket(tcpSocket),
+	mUdpSocket(udpSocket),
 	mCurrentSent(0),
 	mCurrentReceived(0),
 	mTotalSizeToReceive(MESSAGE_HEADER_SIZE),
 	mIsReceivingHeader(true),
-	mpCtsRpcInstance(NewObject<UBattleGameCtsRpc>()),
-	mpStcRpcInstance(NewObject<UBattleGameStcRpc>()),
-	mServerAddrIn(new struct sockaddr_in()),
-	mServerAddrLen(sizeof(struct sockaddr_in)),
-	mpLastGameModeContext(nullptr)
+	mpServerAddrIn(new struct sockaddr_in())
 {
-	WSADATA wsaData;
-	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-	check(result == 0);
+	ZeroMemory(mpServerAddrIn.Get(), sizeof(struct sockaddr_in));
+	mpServerAddrIn->sin_family = AF_INET;
+	mpServerAddrIn->sin_port = htons(serverPort);
+	check(inet_pton(AF_INET, TCHAR_TO_ANSI(*serverAddress), &mpServerAddrIn->sin_addr) == 1);
 
-	ZeroMemory(mServerAddrIn, mServerAddrLen);
-	mServerAddrIn->sin_family = AF_INET;
-	mServerAddrIn->sin_port = htons(mServerPort);
-
-	result = inet_pton(AF_INET, TCHAR_TO_ANSI(*mServerAddress), &mServerAddrIn->sin_addr);
-	check(result == 1);
+	mThread = FRunnableThread::Create(this, UTF8_TO_TCHAR("NetworkThread"));
 }
 
-BattleGameNetworkManager::~BattleGameNetworkManager()
+FNetworkRunnable::~FNetworkRunnable()
 {
-	CleanupSocket();
-	WSACleanup();
-}
-
-
-bool BattleGameNetworkManager::ConnectToServer(int32& errorCode)
-{
-	mUdpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	check(mUdpSocket != INVALID_SOCKET);
-
-	u_long nonBlockingModeFlag = 1;
-	int result = ioctlsocket(mUdpSocket, FIONBIO, &nonBlockingModeFlag);
-	check(result == 0);
-
-	mTcpSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	check(mTcpSocket != INVALID_SOCKET);
-
-	result = connect(mTcpSocket, reinterpret_cast<struct sockaddr*>(mServerAddrIn), mServerAddrLen);
-	if (result == SOCKET_ERROR)
+	if (mThread != nullptr)
 	{
-		errorCode = WSAGetLastError();
-		CleanupSocket();
-		return false;
+		mThread->Kill();
+		delete mThread;
 	}
-	else
-	{
-		result = ioctlsocket(mTcpSocket, FIONBIO, &nonBlockingModeFlag);
-		check(result == 0);
-		errorCode = 0;
-		return true;
-	}
-}
 
-void BattleGameNetworkManager::ManualTick(AGameModeBase* gameModeContext)
-{
-	mpLastGameModeContext = gameModeContext;
-	SendTcp();
-	ReceiveTcp();
-	ReceiveUdp();
-}
-
-void BattleGameNetworkManager::CleanupSocket()
-{
-	mTcpSendQueue.Empty();
-	mCurrentSent = 0;
-	mTotalSizeToReceive = MESSAGE_HEADER_SIZE;
-	mCurrentReceived = 0;
-	mLastReceivedHeaderType = 0;
-	mIsReceivingHeader = true;
 	if (mTcpSocket != INVALID_SOCKET)
 	{
 		shutdown(mTcpSocket, SD_SEND);
 		closesocket(mTcpSocket);
 		mTcpSocket = INVALID_SOCKET;
+	}
+	if (mUdpSocket != INVALID_SOCKET)
+	{
 		shutdown(mUdpSocket, SD_SEND);
 		closesocket(mUdpSocket);
 		mUdpSocket = INVALID_SOCKET;
 	}
 }
 
-BattleGameNetworkManager::IoResult BattleGameNetworkManager::HandleResult(int result, int& outErrorCode)
+bool FNetworkRunnable::Init()
+{
+	return true;
+}
+
+uint32 FNetworkRunnable::Run()
+{
+	while (!mStopping)
+	{
+		//FPlatformProcess::Sleep(0.05);
+		SendUdp();
+		SendTcp();
+		ReceiveTcp();
+		ReceiveUdp();
+	}
+	return 0;
+}
+
+void FNetworkRunnable::Exit()
+{
+}
+
+void FNetworkRunnable::Stop()
+{mStopping = true;}
+
+FNetworkRunnable::IoResult FNetworkRunnable::HandleResult(int result, int& outErrorCode)
 {
 	outErrorCode = 0;
 	if (result == SOCKET_ERROR)
@@ -142,24 +112,7 @@ BattleGameNetworkManager::IoResult BattleGameNetworkManager::HandleResult(int re
 	}
 }
 
-void BattleGameNetworkManager::OnDisconnected(int32 reason)
-{
-	Cast<UBattleGameInstance>(mpLastGameModeContext->GetGameInstance())->OnDisconnected(reason);
-}
-
-void BattleGameNetworkManager::RequestSendMessage(EBattleGameSendReliability reliability, Message&& message)
-{
-	if (reliability == EBattleGameSendReliability::RELIABLE)
-	{
-		mTcpSendQueue.Enqueue(std::move(message));
-	}
-	else
-	{
-		SendUdp(std::move(message));
-	}
-}
-
-void BattleGameNetworkManager::SendTcp()
+void FNetworkRunnable::SendTcp()
 {
 	if (mTcpSocket == INVALID_SOCKET)
 	{
@@ -185,8 +138,8 @@ void BattleGameNetworkManager::SendTcp()
 			}
 			break;
 		case DISCONNECTED:
-			CleanupSocket();
-			OnDisconnected(static_cast<int32>(errorCode));
+			FFunctionGraphTask::CreateAndDispatchWhenReady([errorCode]() { BattleGameNetworkManager::GetInstance().OnDisconnected(static_cast<int32>(errorCode)); }, TStatId(), nullptr, ENamedThreads::GameThread);
+			mStopping = true;
 			return;
 		case WOULD_BLOCK:
 			break;
@@ -194,12 +147,11 @@ void BattleGameNetworkManager::SendTcp()
 	}
 }
 
-void BattleGameNetworkManager::ReceiveTcp()
+void FNetworkRunnable::ReceiveTcp()
 {
 	if (mTcpSocket == INVALID_SOCKET)
-	{
-		return;
-	}
+	{return;}
+
 	auto completeMessage = [this]()
 		{
 			Message message;
@@ -207,11 +159,9 @@ void BattleGameNetworkManager::ReceiveTcp()
 			message.mHeaderMessageType = mLastReceivedHeaderType;
 			message.mpBodyBuffer = TUniquePtr<char>(new char[mTotalSizeToReceive]);
 			memcpy(message.mpBodyBuffer.Get(), mReceiveBuffer, mTotalSizeToReceive);
-
 			mTotalSizeToReceive = MESSAGE_HEADER_SIZE;
 			mIsReceivingHeader = true;
-
-			mpStcRpcInstance->Handle(message);
+			FFunctionGraphTask::CreateAndDispatchWhenReady([message = std::move(message)]() { BattleGameNetworkManager::GetInstance().GetBattleGameStcRpc()->Handle(message); }, TStatId(), nullptr, ENamedThreads::GameThread);
 		};
 	int result = recv(mTcpSocket, (mReceiveBuffer + mCurrentReceived), (mTotalSizeToReceive - mCurrentReceived), 0);
 	int errorCode;
@@ -229,56 +179,49 @@ void BattleGameNetworkManager::ReceiveTcp()
 				check(mTotalSizeToReceive <= MAX_MESSAGE_SIZE);
 
 				if (mTotalSizeToReceive == 0)
-				{
-					completeMessage();
-				}
+				{completeMessage();}
 				else
-				{
-					mIsReceivingHeader = false;
-				}
+				{mIsReceivingHeader = false;}
 			}
 			else
-			{
-				completeMessage();
-			}
+			{completeMessage();}
 			mCurrentReceived = 0;
 			ZeroMemory(mReceiveBuffer, MAX_MESSAGE_SIZE);
 		}
 		break;
 	case DISCONNECTED:
-		CleanupSocket();
-		OnDisconnected(static_cast<int32>(errorCode));
+		FFunctionGraphTask::CreateAndDispatchWhenReady([errorCode]() { BattleGameNetworkManager::GetInstance().OnDisconnected(static_cast<int32>(errorCode)); }, TStatId(), nullptr, ENamedThreads::GameThread);
+		mStopping = true;
 		return;
 	case WOULD_BLOCK:
 		break;
 	}
 }
 
-void BattleGameNetworkManager::SendUdp(Message&& message)
+void FNetworkRunnable::SendUdp()
 {
-	if (mUdpSocket == INVALID_SOCKET)
-	{
-		return;
-	}
+	if (mUdpSocket == INVALID_SOCKET || mUdpSendQueue.IsEmpty())
+	{return;}
+
+	auto message = mUdpSendQueue.Peek();
 
 	char serializedMessage[MAX_MESSAGE_SIZE];
-	int serializedMessageLength = 4 + 4 + message.mHeaderBodySize;
-	memcpy(serializedMessage, &message.mHeaderBodySize, 4);
-	memcpy(serializedMessage + 4, &message.mHeaderMessageType, 4);
-	memcpy(serializedMessage + 8, message.mpBodyBuffer.Get(), message.mHeaderBodySize);
+	int serializedMessageLength = 4 + 4 + message->mHeaderBodySize;
+	memcpy(serializedMessage, &message->mHeaderBodySize, 4);
+	memcpy(serializedMessage + 4, &message->mHeaderMessageType, 4);
+	memcpy(serializedMessage + 8, message->mpBodyBuffer.Get(), message->mHeaderBodySize);
+	mUdpSendQueue.Pop();
 
-	int result = sendto(mUdpSocket, serializedMessage, serializedMessageLength, 0, reinterpret_cast<struct sockaddr*>(mServerAddrIn), mServerAddrLen);
+	int result = sendto(mUdpSocket, serializedMessage, serializedMessageLength, 0, reinterpret_cast<struct sockaddr*>(mpServerAddrIn.Get()), static_cast<socklen_t>(sizeof(struct sockaddr_in)));
 	if (result == SOCKET_ERROR)
 	{
 		int errorCode = WSAGetLastError();
 		if (errorCode != WSAEWOULDBLOCK)
-		{
-			UE_LOG(LogBattleGameNetwork, Error, TEXT("UDP 메시지 송신 중 에러가 발생하였습니다: 에러 코드 %d"), errorCode);
-		}
+		{UE_LOG(LogBattleGameNetwork, Error, TEXT("UDP 메시지 송신 중 에러가 발생하였습니다: 에러 코드 %d"), errorCode);}
 	}
 }
 
-void BattleGameNetworkManager::ReceiveUdp()
+void FNetworkRunnable::ReceiveUdp()
 {
 	if (mUdpSocket == INVALID_SOCKET)
 	{
@@ -286,33 +229,128 @@ void BattleGameNetworkManager::ReceiveUdp()
 	}
 
 	char serializedMessage[MAX_MESSAGE_SIZE];
-
-	int result = recvfrom(mUdpSocket, serializedMessage, MAX_MESSAGE_SIZE, 0, reinterpret_cast<struct sockaddr*>(mServerAddrIn), &mServerAddrLen);
+	socklen_t addrLen = sizeof(struct sockaddr_in);
+	int result = recvfrom(mUdpSocket, serializedMessage, MAX_MESSAGE_SIZE, 0, reinterpret_cast<struct sockaddr*>(mpServerAddrIn.Get()), &addrLen);
 	if (result == SOCKET_ERROR)
 	{
 		int errorCode = WSAGetLastError();
 		if (errorCode != WSAEWOULDBLOCK)
-		{
-			UE_LOG(LogBattleGameNetwork, Error, TEXT("UDP 메시지 수신 중 에러가 발생하였습니다: 에러 코드 %d"), errorCode);
-		}
+		{UE_LOG(LogBattleGameNetwork, Error, TEXT("UDP 메시지 수신 중 에러가 발생하였습니다: 에러 코드 %d"), errorCode);}
 		return;
 	}
 
 	Message message;
 	memcpy(&message.mHeaderBodySize, serializedMessage, 4);
-	memcpy(&message.mHeaderMessageType, serializedMessage+4, 4);
+	memcpy(&message.mHeaderMessageType, serializedMessage + 4, 4);
 	char* body = new char[message.mHeaderBodySize];
 	memcpy(body, serializedMessage + 8, message.mHeaderBodySize);
 	message.mpBodyBuffer = TUniquePtr<char>(body);
-	
-	mpStcRpcInstance->Handle(message);
+	FFunctionGraphTask::CreateAndDispatchWhenReady([message = std::move(message)]() { BattleGameNetworkManager::GetInstance().GetBattleGameStcRpc()->Handle(message); }, TStatId(), nullptr, ENamedThreads::GameThread);
 }
 
-AGameModeBase* BattleGameNetworkManager::GetLastGameModeContext()
+void FNetworkRunnable::EnqueueMessage(EBattleGameSendReliability reliability, Message&& message)
 {
-	if (!IsValid(mpLastGameModeContext))
-	{ 
-		mpLastGameModeContext = nullptr;
-	} 
-	return mpLastGameModeContext; 
+	if (reliability == EBattleGameSendReliability::RELIABLE)
+	{mTcpSendQueue.Enqueue(std::move(message));}
+	else
+	{mUdpSendQueue.Enqueue(std::move(message));}
+}
+
+// BattleGameNetworkManager
+
+TUniquePtr<BattleGameNetworkManager> BattleGameNetworkManager::spSingleton = nullptr;
+
+BattleGameNetworkManager& BattleGameNetworkManager::GetInstance()
+{
+	if (spSingleton == nullptr)
+	{spSingleton = MakeUnique<BattleGameNetworkManager>();}
+	return *spSingleton;
+}
+
+BattleGameNetworkManager::BattleGameNetworkManager() noexcept
+	: mpStcRpcInstance(NewObject<UBattleGameStcRpc>()),
+	mpGameModeContext(nullptr)
+{
+	WSADATA wsaData;
+	int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	check(result == 0);
+}
+
+BattleGameNetworkManager::~BattleGameNetworkManager()
+{
+	WSACleanup();
+}
+
+
+bool BattleGameNetworkManager::Connect(const FString& serverAddress, int32 serverPort, int32& errorCode)
+{
+	struct sockaddr_in serverAddrIn {};
+	ZeroMemory(&serverAddrIn, sizeof(serverAddrIn));
+	serverAddrIn.sin_family = AF_INET;
+	serverAddrIn.sin_port = htons(serverPort);
+	int result = inet_pton(AF_INET, TCHAR_TO_ANSI(*serverAddress), &serverAddrIn.sin_addr);
+	check(result == 1);
+
+	SOCKET tcpSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	check(tcpSocket != INVALID_SOCKET);
+	result = connect(tcpSocket, reinterpret_cast<struct sockaddr*>(&serverAddrIn), sizeof(serverAddrIn));
+	if (result == SOCKET_ERROR)
+	{
+		errorCode = WSAGetLastError();
+		closesocket(tcpSocket);
+		return false;
+	}
+	else
+	{
+		u_long nonBlockingModeFlag = 1;
+		result = ioctlsocket(tcpSocket, FIONBIO, &nonBlockingModeFlag);
+		check(result == 0);
+
+		struct sockaddr_in boundTcpAddr;
+		socklen_t len = sizeof(boundTcpAddr);
+		result = getsockname(tcpSocket, reinterpret_cast<struct sockaddr*>(&boundTcpAddr), &len);
+		check(result != SOCKET_ERROR);
+
+		SOCKET udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+		check(udpSocket != INVALID_SOCKET);
+		struct sockaddr_in udpAddr;
+		ZeroMemory(&udpAddr, sizeof(udpAddr));
+		udpAddr.sin_family = AF_INET;
+		udpAddr.sin_addr.S_un.S_addr = INADDR_ANY;
+		udpAddr.sin_port = boundTcpAddr.sin_port;
+		result = bind(udpSocket, reinterpret_cast<struct sockaddr*>(&udpAddr), sizeof(udpAddr));
+		check(result != SOCKET_ERROR);
+		result = ioctlsocket(udpSocket, FIONBIO, &nonBlockingModeFlag);
+		check(result == 0);
+
+		check(mpNetworkRunnable == nullptr);
+		mpNetworkRunnable = MakeUnique<FNetworkRunnable>(tcpSocket, udpSocket, serverAddress, serverPort);
+		errorCode = 0;
+		return true;
+	}
+}
+
+AGameModeBase* BattleGameNetworkManager::GetGameModeContext()
+{
+	if (!IsValid(mpGameModeContext))
+	{
+		mpGameModeContext = nullptr;
+	}
+	return mpGameModeContext;
+}
+
+void BattleGameNetworkManager::EnqueueMessage(EBattleGameSendReliability reliability, Message&& message)
+{
+	if (mpNetworkRunnable == nullptr)
+	{
+		return;
+	}
+
+	mpNetworkRunnable->EnqueueMessage(reliability, std::move(message));
+}
+
+void BattleGameNetworkManager::OnDisconnected(int32 reason)
+{
+	mpNetworkRunnable.Reset(nullptr);
+	Cast<UBattleGameInstance>(mpGameModeContext->GetGameInstance())->OnDisconnected(reason);
 }

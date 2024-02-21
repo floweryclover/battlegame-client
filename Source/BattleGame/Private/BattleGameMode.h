@@ -26,7 +26,25 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnMoveEntity(int32 entityId, const FVector& location, double direction);
+	
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSignalGameState(int32 signal);
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnRespawnEntity(int32 entityId, const FVector& location, double direction);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSetScore(int32 team, int32 score);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnAssignTeamId(int32 teamId);	
+	
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnAssignEntityNickname(int32 entityId, const FText& nickname);	
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnSendGameData(const FString& myNickname, const FString& opponentNickname);
+	
 protected:
 	UPROPERTY(BlueprintReadWrite)
 	TMap<int32, APawn*> mEntities;

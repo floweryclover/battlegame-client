@@ -20,20 +20,29 @@ class UBattleGameCtsRpc : public UObject
 public:
 	static constexpr int CTS_REQUEST_MATCHMAKING = 1;
 	static constexpr int CTS_MOVE_CHARACTER = 2;
-	static constexpr int CTS_ACK_UDP_TOKEN = 3;
-	static constexpr int CTS_NOTIFY_BATTLEGAME_PREPARED = 4;
+	static constexpr int CTS_NOTIFY_BATTLEGAME_PREPARED = 3;
+	static constexpr int CTS_NOTIFY_OWNING_CHARACTER_DESTROYED = 4;
+	static constexpr int CTS_SET_NICKNAME = 5;
+	static constexpr int CTS_REQUEST_MY_NICKNAME = 6;
 
 	UBattleGameCtsRpc() = default;
 	virtual ~UBattleGameCtsRpc() = default;
 	
-	UFUNCTION(BlueprintCallable)
-	void RequestMatchMaking();
+	UFUNCTION(BlueprintCallable, Category="BattleGame|CtsRpc")
+	static void RequestMatchMaking();
 
-	UFUNCTION(BlueprintCallable)
-	void MoveCharacter(const FVector& position);
+	UFUNCTION(BlueprintCallable, Category = "BattleGame|CtsRpc")
+	static void MoveCharacter(const FVector& position, double direction);
 
-	void AckUdpToken(unsigned long long token);
+	UFUNCTION(BlueprintCallable, Category = "BattleGame|CtsRpc")
+	static void NotifyBattleGamePrepared();
 
-	UFUNCTION(BlueprintCallable)
-	void NotifyBattleGamePrepared();
+	UFUNCTION(BlueprintCallable, Category = "BattleGame|CtsRpc")
+	static void NotifyOwningCharacterDestroyed();
+
+	UFUNCTION(BlueprintCallable, Category = "BattleGame|CtsRpc")
+	static void SetNickname(const FString& nickname);
+	
+	UFUNCTION(BlueprintCallable, Category = "BattleGame|CtsRpc")
+	static void RequestMyNickname();
 };

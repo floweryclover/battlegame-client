@@ -4,17 +4,13 @@
 #include "BattleGameBpFunctionLibrary.h"
 #include "BattleGameNetworkManager.h"
 #include "BattleGameCtsRpc.h"
+#include "LogBattleGameNetwork.h"
 #include "GameFramework/GameModeBase.h"
 #include <WinSock2.h>
 
-void UBattleGameBpFunctionLibrary::InitializeBattleGameNetworkManager(const FString& serverAddress, int32 serverPort)
+bool UBattleGameBpFunctionLibrary::Connect(const FString& serverAddress, int32 serverPort, int32& errorCode)
 {
-	BattleGameNetworkManager::Initialize(serverAddress, serverPort);
-}
-
-bool UBattleGameBpFunctionLibrary::Connect(int32& errorCode)
-{
-	return BattleGameNetworkManager::GetInstance().ConnectToServer(errorCode);
+	return BattleGameNetworkManager::GetInstance().Connect(serverAddress, serverPort, errorCode);
 }
 
 
@@ -26,6 +22,7 @@ FText UBattleGameBpFunctionLibrary::InterpretWsaErrorCode(int32 wsaErrorCode)
 	case WSAEWOULDBLOCK:
 		reason = FString(TEXT("IO 작업이 Would Block 상태입니다."));
 		break;
+	case 0:
 	case WSAECONNABORTED:
 	case WSAECONNRESET:
 		reason = FString(TEXT("서버와의 연결이 끊어졌습니다."));
@@ -42,12 +39,12 @@ FText UBattleGameBpFunctionLibrary::InterpretWsaErrorCode(int32 wsaErrorCode)
 	return FText::FromString(reason);
 }
 
-UBattleGameCtsRpc* UBattleGameBpFunctionLibrary::GetCtsRpcInstance()
+void UBattleGameBpFunctionLibrary::SetGameModeContext(AGameModeBase* context)
 {
-	return BattleGameNetworkManager::GetInstance().GetBattleGameCtsRpc();
+	BattleGameNetworkManager::GetInstance().SetGameModeContext(context);
 }
 
-void UBattleGameBpFunctionLibrary::ManualTick(AGameModeBase* gameModeContext)
+int32 UBattleGameBpFunctionLibrary::GetStringSizeInBytes(const FString& string)
 {
-	BattleGameNetworkManager::GetInstance().ManualTick(gameModeContext);
+	return strlen(TCHAR_TO_UTF8(*string));
 }
