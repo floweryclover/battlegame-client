@@ -66,3 +66,10 @@ void UBattleGameCtsRpc::RequestMyNickname()
 	BattleGameNetworkManager::GetInstance()
 		.EnqueueMessage(EBattleGameSendReliability::RELIABLE, std::move(message));
 }
+
+void UBattleGameCtsRpc::BattleCommand(int32 command)
+{
+	Message message(4, CTS_BATTLE_COMMAND, reinterpret_cast<char*>(&command));
+	BattleGameNetworkManager::GetInstance()
+		.EnqueueMessage(EBattleGameSendReliability::RELIABLE, std::move(message));
+}

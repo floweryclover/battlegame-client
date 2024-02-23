@@ -47,6 +47,9 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnSendGameResult(bool isGoodGame, bool isWinner, int32 myScore, int32 opponentScore);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnKnockbackEntity(int32 entityId, const FVector& location, const FVector& impulse);
 protected:
 	UPROPERTY(BlueprintReadWrite)
 	TMap<int32, APawn*> mEntities;

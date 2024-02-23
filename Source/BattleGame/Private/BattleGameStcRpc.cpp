@@ -13,6 +13,7 @@
 
 void UBattleGameStcRpc::Handle(const Message& message)
 {
+	auto pBuffer = message.mpBodyBuffer.Get();
 	switch (message.mHeaderMessageType)
 	{
 	case STC_OPEN_LEVEL:
@@ -28,25 +29,25 @@ void UBattleGameStcRpc::Handle(const Message& message)
 		int32 entityId;
 		FVector location;
 		double direction;
-		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
-		memcpy(&location.X, message.mpBodyBuffer.Get() + 4, 8);
-		memcpy(&location.Y, message.mpBodyBuffer.Get() + 12, 8);
-		memcpy(&location.Z, message.mpBodyBuffer.Get() + 20, 8);
-		memcpy(&direction, message.mpBodyBuffer.Get() + 28, 8);
+		memcpy(&entityId, pBuffer, 4);
+		memcpy(&location.X, pBuffer + 4, 8);
+		memcpy(&location.Y, pBuffer + 12, 8);
+		memcpy(&location.Z, pBuffer + 20, 8);
+		memcpy(&direction, pBuffer + 28, 8);
 		OnSpawnEntity(entityId, location, direction);
 		break;
 	}
 	case STC_DESPAWN_ENTITY:
 	{
 		int32 entityId;
-		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
+		memcpy(&entityId, pBuffer, 4);
 		OnDespawnEntity(entityId);
 		break;
 	}
 	case STC_POSSESS_ENTITY:
 	{
 		int32 entityId;
-		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
+		memcpy(&entityId, pBuffer, 4);
 		OnPossessEntity(entityId);
 		break;
 	}
@@ -55,11 +56,11 @@ void UBattleGameStcRpc::Handle(const Message& message)
 		int32 entityId;
 		FVector location;
 		double direction;
-		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
-		memcpy(&location.X, message.mpBodyBuffer.Get() + 4, 8);
-		memcpy(&location.Y, message.mpBodyBuffer.Get() + 12, 8);
-		memcpy(&location.Z, message.mpBodyBuffer.Get() + 20, 8);
-		memcpy(&direction, message.mpBodyBuffer.Get() + 28, 8);
+		memcpy(&entityId, pBuffer, 4);
+		memcpy(&location.X, pBuffer + 4, 8);
+		memcpy(&location.Y, pBuffer + 12, 8);
+		memcpy(&location.Z, pBuffer + 20, 8);
+		memcpy(&direction, pBuffer + 28, 8);
 		OnMoveEntity(entityId, location, direction);
 		break;
 	}
@@ -68,15 +69,15 @@ void UBattleGameStcRpc::Handle(const Message& message)
 		unsigned short seconds;
 		char text[30];
 		memset(text, 0, 30);
-		memcpy(&seconds, message.mpBodyBuffer.Get(), 2);
-		memcpy(text, message.mpBodyBuffer.Get()+2, message.mHeaderBodySize-2);
+		memcpy(&seconds, pBuffer, 2);
+		memcpy(text, pBuffer +2, message.mHeaderBodySize-2);
 		OnSetTimer(seconds, FText::FromString(UTF8_TO_TCHAR(text)));
 		break;
 	}
 	case STC_SIGNAL_GAME_STATE:
 	{
 		int32 signal;
-		memcpy(&signal, message.mpBodyBuffer.Get(), 4);
+		memcpy(&signal, pBuffer, 4);
 		OnSignalGameState(signal);
 		break;
 	}
@@ -85,11 +86,11 @@ void UBattleGameStcRpc::Handle(const Message& message)
 		int32 entityId;
 		FVector location;
 		double direction;
-		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
-		memcpy(&location.X, message.mpBodyBuffer.Get() + 4, 8);
-		memcpy(&location.Y, message.mpBodyBuffer.Get() + 12, 8);
-		memcpy(&location.Z, message.mpBodyBuffer.Get() + 20, 8);
-		memcpy(&direction, message.mpBodyBuffer.Get() + 28, 8);
+		memcpy(&entityId, pBuffer, 4);
+		memcpy(&location.X, pBuffer + 4, 8);
+		memcpy(&location.Y, pBuffer + 12, 8);
+		memcpy(&location.Z, pBuffer + 20, 8);
+		memcpy(&direction, pBuffer + 28, 8);
 		OnRespawnEntity(entityId, location, direction);
 		break;
 	}
@@ -97,15 +98,15 @@ void UBattleGameStcRpc::Handle(const Message& message)
 	{
 		int32 team;
 		int32 score;
-		memcpy(&team, message.mpBodyBuffer.Get(), 4);
-		memcpy(&score, message.mpBodyBuffer.Get()+4, 4);
+		memcpy(&team, pBuffer, 4);
+		memcpy(&score, pBuffer +4, 4);
 		OnSetScore(team, score);
 		break;
 	}
 	case STC_ASSIGN_TEAM_ID:
 	{
 		int32 teamId;
-		memcpy(&teamId, message.mpBodyBuffer.Get(), 4);
+		memcpy(&teamId, pBuffer, 4);
 		OnAssignTeamId(teamId);
 		break;
 	}
@@ -113,15 +114,15 @@ void UBattleGameStcRpc::Handle(const Message& message)
 	{
 		int32 entityId;
 		char nicknameChars[24] = {0,};
-		memcpy(&entityId, message.mpBodyBuffer.Get(), 4);
-		memcpy(nicknameChars, message.mpBodyBuffer.Get() + 4, message.mHeaderBodySize - 4);
+		memcpy(&entityId, pBuffer, 4);
+		memcpy(nicknameChars, pBuffer + 4, message.mHeaderBodySize - 4);
 		OnAssignEntityNickname(entityId, FText::FromString(UTF8_TO_TCHAR(nicknameChars)));
 		break;
 	}
 	case STC_GET_MY_NICKNAME:
 	{		
 		char nicknameChars[24] = { 0, };
-		memcpy(nicknameChars, message.mpBodyBuffer.Get(), message.mHeaderBodySize);
+		memcpy(nicknameChars, pBuffer, message.mHeaderBodySize);
 		OnGetMyNickname(FText::FromString(UTF8_TO_TCHAR(nicknameChars)));
 
 		break;
@@ -131,10 +132,10 @@ void UBattleGameStcRpc::Handle(const Message& message)
 		int myNicknameLength, opponentNicknameLength;
 		char myNickname[25];
 		char opponentNickname[25];
-		memcpy(&myNicknameLength, message.mpBodyBuffer.Get(), 4);
-		memcpy(myNickname, message.mpBodyBuffer.Get() + 4, myNicknameLength);
-		memcpy(&opponentNicknameLength, message.mpBodyBuffer.Get() + 4 + myNicknameLength, 4);
-		memcpy(opponentNickname, message.mpBodyBuffer.Get() + 4 + myNicknameLength + 4, opponentNicknameLength);
+		memcpy(&myNicknameLength, pBuffer, 4);
+		memcpy(myNickname, pBuffer + 4, myNicknameLength);
+		memcpy(&opponentNicknameLength, pBuffer + 4 + myNicknameLength, 4);
+		memcpy(opponentNickname, pBuffer + 4 + myNicknameLength + 4, opponentNicknameLength);
 		OnSendGameData(FString(UTF8_TO_TCHAR(myNickname)), FString(UTF8_TO_TCHAR(opponentNickname)));
 		break;
 	}
@@ -142,11 +143,25 @@ void UBattleGameStcRpc::Handle(const Message& message)
 	{
 		bool isGoodGame, isWinner;
 		int32 myScore, opponentScore;
-		memcpy(&isGoodGame, message.mpBodyBuffer.Get(), 1);
-		memcpy(&isWinner, message.mpBodyBuffer.Get()+1, 1);
-		memcpy(&myScore, message.mpBodyBuffer.Get()+2, 4);
-		memcpy(&opponentScore, message.mpBodyBuffer.Get()+6, 4);
+		memcpy(&isGoodGame, pBuffer, 1);
+		memcpy(&isWinner, pBuffer +1, 1);
+		memcpy(&myScore, pBuffer +2, 4);
+		memcpy(&opponentScore, pBuffer +6, 4);
 		OnSendGameResult(isGoodGame, isWinner, myScore, opponentScore);
+		break;
+	}
+	case STC_KNOCKBACK_ENTITY:
+	{
+		int32 entityId;
+		FVector location, impulse;
+		memcpy(&entityId, pBuffer, 4);
+		memcpy(&location.X, pBuffer+4, 8);
+		memcpy(&location.Y, pBuffer+12, 8);
+		memcpy(&location.Z, pBuffer+20, 8);		
+		memcpy(&impulse.X, pBuffer+28, 8);
+		memcpy(&impulse.Y, pBuffer+36, 8);
+		impulse.Z = 0;
+		OnKnockbackEntity(entityId, location, impulse);
 		break;
 	}
 	default:
@@ -313,4 +328,16 @@ void UBattleGameStcRpc::OnSendGameResult(bool isGoodGame, bool isWinner, int32 m
 	}
 
 	pBattleGameMode->OnSendGameResult(isGoodGame, isWinner, myScore, opponentScore);
+}
+
+void UBattleGameStcRpc::OnKnockbackEntity(int32 entityId, const FVector& location, const FVector& impulse)
+{
+	auto pBattleGameMode = Cast<ABattleGameMode>(BattleGameNetworkManager::GetInstance().GetGameModeContext());
+	if (!IsValid(pBattleGameMode))
+	{
+		UE_LOG(LogBattleGameNetwork, Error, TEXT("BattleGameMode가 준비되지 않았습니다."));
+		return;
+	}
+
+	pBattleGameMode->OnKnockbackEntity(entityId, location, impulse);
 }

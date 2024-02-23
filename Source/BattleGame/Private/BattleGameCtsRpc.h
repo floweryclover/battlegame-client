@@ -24,6 +24,7 @@ public:
 	static constexpr int CTS_NOTIFY_OWNING_CHARACTER_DESTROYED = 4;
 	static constexpr int CTS_SET_NICKNAME = 5;
 	static constexpr int CTS_REQUEST_MY_NICKNAME = 6;
+	static constexpr int CTS_BATTLE_COMMAND = 7;
 
 	UBattleGameCtsRpc() = default;
 	virtual ~UBattleGameCtsRpc() = default;
@@ -45,4 +46,7 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "BattleGame|CtsRpc")
 	static void RequestMyNickname();
+	
+	UFUNCTION(BlueprintCallable, Category = "BattleGame|CtsRpc")
+	static void BattleCommand(int32 command);
 };
